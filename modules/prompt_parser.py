@@ -468,7 +468,11 @@ def parse_prompt_attention(text):
         elif text == '[':
             square_brackets.append(len(res))
         elif weight is not None and round_brackets:
-            multiply_range(round_brackets.pop(), float(weight))
+            try:
+                w = float(weight)
+            except:
+                w = 1
+            multiply_range(round_brackets.pop(), float(w))
         elif text == ')' and round_brackets:
             multiply_range(round_brackets.pop(), round_bracket_multiplier)
         elif text == ']' and square_brackets:
