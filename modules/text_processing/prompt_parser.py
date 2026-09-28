@@ -97,7 +97,8 @@ def get_learned_conditioning_prompt_schedules(prompts, base_steps, hires_steps=N
                         v = (v - flt_offset) * steps
                     else:
                         v = (v - int_offset)
-                tree.children[-2] = min(steps, int(v))
+                # [dreamer patch] clamp before int() so e.g. [a:b:1e999] (inf) doesn't raise OverflowError
+                tree.children[-2] = int(max(-1, min(steps, v)))
                 if tree.children[-2] >= 1:
                     res.append(tree.children[-2])
 
@@ -399,6 +400,7 @@ re_attention = re.compile(r"""
 """, re.X)
 
 re_break = re.compile(r"\s*\bBREAK\b\s*", re.S)
+re_valid_weight = re.compile(r"[+-]?(?:\d+\.?\d*|\.\d+)")
 re_attention_v1 = re_attention
 
 def parse_prompt_attention(text):
@@ -485,7 +487,10 @@ def parse_prompt_attention(text):
         elif text == '[':
             square_brackets.append(len(res))
         elif weight is not None and round_brackets:
-            multiply_range(round_brackets.pop(), float(weight))
+            # [dreamer patch] re_attention accepts any run of digits/dots (e.g. "1.6.", ".1.1", "."),
+            # so float() can raise. Drop trailing dots ("1.6." -> 1.6); anything else invalid falls back to (text).
+            weight = weight.rstrip('.')
+            multiply_range(round_brackets.pop(), float(weight) if re_valid_weight.fullmatch(weight) else round_bracket_multiplier)
         elif text == ')' and round_brackets:
             multiply_range(round_brackets.pop(), round_bracket_multiplier)
         elif text == ']' and square_brackets:

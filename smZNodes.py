@@ -50,7 +50,10 @@ def iter_items(d):
             yield from iter_items(value)
 
 def find_nearest(a,b):
-    # Calculate the absolute differences. 
+    # [dreamer patch] `a` is the per-sample timestep batch; with batch_size > 1 it can't broadcast
+    # against `b` (all sigmas). Every sample shares the same timestep, so compare using the first.
+    a = a.reshape(-1)[0]
+    # Calculate the absolute differences.
     diff = (a - b).abs()
 
     # Find the indices of the nearest elements
